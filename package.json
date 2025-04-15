@@ -10,8 +10,10 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-ml-kit/text-recognition": "^1.5.2",
     "react": "19.0.0",
-    "react-native": "0.79.0"
+    "react-native": "0.79.0",
+    "react-native-image-picker": "5.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
