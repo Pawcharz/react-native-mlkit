@@ -16,7 +16,7 @@ const App = () => {
 
       // Use directly with ML Kit:
       const recognitionResult = await TextRecognition.recognize(asset.uri);
-      console.log('Recognized text:', recognitionResult.text);
+      console.log('Recognized text: \n', recognitionResult.text);
     } else {
       console.log('No image selected.');
     }

@@ -20,6 +20,7 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
+              add(ObjectDetectorPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"
@@ -40,5 +41,11 @@ class MainApplication : Application(), ReactApplication {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()
     }
+
+    val localModel = LocalModel.Builder()
+        .setAssetFilePath("demo_model.tflite")
+        // or .setAbsoluteFilePath(absolute file path to model file)
+        // or .setUri(URI to model file)
+        .build()
   }
 }
