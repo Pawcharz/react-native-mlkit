@@ -17,12 +17,61 @@ interface EmiratesIdCardBackInfo {
   expiryDate: Date
 }
 
+type TD1MRZData = {
+  documentType: string;
+  issuingCountry: string;
+  documentNumber: string;
+  documentNumberCheckDigit: string;
+  optionalData1: string;
+  birthDate: string;
+  birthDateCheckDigit: string;
+  sex: string;
+  expirationDate: string;
+  expirationDateCheckDigit: string;
+  nationality: string;
+  optionalData2: string;
+  names: { surname: string; givenNames: string[] };
+};
+
 const ID_CARD_NUMBER_REGEX = new RegExp(/784[-]*\d{4}[-]*\d{7}[-]*\d/);
 // All in lower case
 const ID_CARD_NATIONALITY_PREFIX = 'nationality:';
 const ID_CARD_NAME_PREFIX = 'name:';
 
 const App = () => {
+
+  const parseTD1MRZ = (lines: string[]): TD1MRZData => {
+      if (lines.length !== 3 || lines.some(line => line.length !== 30)) {
+          console.log('wrong format')
+          throw new Error('Invalid TD1 MRZ format: must have 3 lines of 30 characters each.');
+      }
+
+      const [line1, line2, line3] = lines;
+
+      const namesRaw = line3.split('<<');
+      const surname = namesRaw[0].replace(/<+/g, ' ').trim();
+      const givenNames = namesRaw.slice(1).join(' ').replace(/<+/g, ' ').trim().split(/\s+/);
+
+      return {
+          documentType: line1.substring(0, 2).replace(/</g, ''),
+          issuingCountry: line1.substring(2, 5),
+          documentNumber: line1.substring(5, 14).replace(/</g, ''),
+          documentNumberCheckDigit: line1[14],
+          optionalData1: line1.substring(15, 30).replace(/</g, ''),
+          birthDate: line2.substring(0, 6),
+          birthDateCheckDigit: line2[6],
+          sex: line2[7],
+          expirationDate: line2.substring(8, 14),
+          expirationDateCheckDigit: line2[14],
+          nationality: line2.substring(15, 18),
+          optionalData2: line2.substring(18, 29).replace(/</g, ''),
+          names: {
+              surname,
+              givenNames,
+          }
+      };
+  };
+
 
   const pickAndRecognize = async () => {
     const result = await launchImageLibrary({ mediaType: 'photo' });
@@ -66,6 +115,13 @@ const App = () => {
   const extractDataFromIdBack = (ocrResult: TextRecognitionResult): EmiratesIdCardBackInfo | null => {
     console.log(ocrResult);
 
+    const mrzCode = ocrResult.text.split('\n').slice(-3).map(line => line.replaceAll(' ', ''));
+
+    console.log('mrzCode: ', mrzCode);
+    const result = parseTD1MRZ(mrzCode);
+
+    console.log('result: ', result);
+
     const backInfo: EmiratesIdCardBackInfo = {
       sex: '',
       dateOfBirth: new Date(),
@@ -105,7 +161,7 @@ const App = () => {
 
       const idCardBackInfo = extractDataFromIdBack(recognitionResult);
 
-      console.log('idCardBackInfo: ', idCardBackInfo);
+      // console.log('idCardBackInfo: ', idCardBackInfo);
     } else {
       console.log('No image selected.');
     }
