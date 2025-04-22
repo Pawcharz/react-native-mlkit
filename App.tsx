@@ -23,10 +23,10 @@ type TD1MRZData = {
   documentNumber: string;
   documentNumberCheckDigit: string;
   optionalData1: string;
-  birthDate: string;
+  birthDate: Date;
   birthDateCheckDigit: string;
   sex: string;
-  expirationDate: string;
+  expirationDate: Date;
   expirationDateCheckDigit: string;
   nationality: string;
   optionalData2: string;
@@ -52,16 +52,41 @@ const App = () => {
       const surname = namesRaw[0].replace(/<+/g, ' ').trim();
       const givenNames = namesRaw.slice(1).join(' ').replace(/<+/g, ' ').trim().split(/\s+/);
 
+      const currentYearEnd = new Date().getFullYear().toString().substring(2, 4);
+
+      // Birth Day
+      const birthDateStr = line2.substring(0, 6);
+      const birthYearEnd = birthDateStr.substring(0, 2);
+
+      // FIX - Replace with full date check
+      const birthYear = Number(Number(birthYearEnd) > Number(currentYearEnd) ? '19' + birthYearEnd : '20' + birthYearEnd);
+
+      const birthDate = new Date(`${birthYear}-${birthDateStr.substring(2, 4)}-${birthDateStr.substring(4, 6)}`);
+
+      console.log('birthDate: ', birthDate.toString());
+
+      // Expiration Date
+
+      const expDateStr = line2.substring(8, 14);
+      const expYearEnd = expDateStr.substring(0, 2);
+
+      // FIX - Replace with full date check
+      const expYear = Number(Number(expYearEnd) > Number(currentYearEnd) ? '19' + expYearEnd : '20' + expYearEnd);
+
+      const expirationDate = new Date(`${expYear}-${expDateStr.substring(2, 4)}-${expDateStr.substring(4, 6)}`);
+
+      console.log('expirationDate: ', expirationDate.toString());
+
       return {
           documentType: line1.substring(0, 2).replace(/</g, ''),
           issuingCountry: line1.substring(2, 5),
           documentNumber: line1.substring(5, 14).replace(/</g, ''),
           documentNumberCheckDigit: line1[14],
           optionalData1: line1.substring(15, 30).replace(/</g, ''),
-          birthDate: line2.substring(0, 6),
+          birthDate: birthDate,
           birthDateCheckDigit: line2[6],
           sex: line2[7],
-          expirationDate: line2.substring(8, 14),
+          expirationDate: expirationDate,
           expirationDateCheckDigit: line2[14],
           nationality: line2.substring(15, 18),
           optionalData2: line2.substring(18, 29).replace(/</g, ''),
@@ -89,6 +114,7 @@ const App = () => {
     }
   };
 
+  // TODO - REMOVE, MRZ should be enough
   const extractDataFromIdFront = (ocrResult: TextRecognitionResult): EmiratesIdCardFrontInfo | null => {
 
     // Check is it United Arab Emirates
