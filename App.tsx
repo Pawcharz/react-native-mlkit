@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { launchImageLibrary } from 'react-native-image-picker';
 
-import {SafeAreaView, Text, StyleSheet, View, Button} from 'react-native';
+import {SafeAreaView, Text, StyleSheet, View, Button, PermissionsAndroid, Platform} from 'react-native';
 import TextRecognition, { TextRecognitionResult } from '@react-native-ml-kit/text-recognition';
+
+import DocumentScanner from 'react-native-document-scanner-plugin';
 
 interface EmiratesIdCardFrontInfo {
   name: string,
@@ -42,7 +44,7 @@ const App = () => {
 
   const parseTD1MRZ = (lines: string[]): TD1MRZData => {
       if (lines.length !== 3 || lines.some(line => line.length !== 30)) {
-          console.log('wrong format')
+          console.log('wrong format');
           throw new Error('Invalid TD1 MRZ format: must have 3 lines of 30 characters each.');
       }
 
@@ -93,7 +95,7 @@ const App = () => {
           names: {
               surname,
               givenNames,
-          }
+          },
       };
   };
 
@@ -193,12 +195,100 @@ const App = () => {
     }
   };
 
+  const [scannedImage, setScannedImage] = useState();
+
+  async function requestCameraPermission() {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: 'Camera Permission',
+          message: 'App needs access to your camera',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        },
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  }
+
+  const requestStoragePermission = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const sdkInt = Platform.Version;
+        console.log('Android SDK:', sdkInt);
+        if (sdkInt >= 33) {
+          const granted = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          ]);
+
+          return (
+            granted['android.permission.READ_MEDIA_IMAGES'] === PermissionsAndroid.RESULTS.GRANTED
+          );
+        } else {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+          );
+          return granted === PermissionsAndroid.RESULTS.GRANTED;
+        }
+      } else {
+        return true; // iOS doesn't need runtime permission for photos
+      }
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  };
+
+  const scanDocument = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      const grantedCamera = await requestCameraPermission();
+      if (!grantedCamera) {
+        console.warn('Camera permission not granted');
+        return;
+      }
+
+      const grantedStorage = await requestStoragePermission();
+      if (!grantedStorage) {
+        console.warn('Storage permission not granted');
+        return;
+      }
+    }
+
+    const { scannedImages } = await DocumentScanner.scanDocument();
+
+    if (scannedImages.length > 0) {
+      const imagePath = scannedImages[0];
+      setScannedImage(imagePath);
+
+      try {
+        console.log('Scanning image: ', imagePath);
+        const recognitionResult = await TextRecognition.recognize(imagePath);
+        console.log('Recognized text from scanned image:', recognitionResult.text);
+      } catch (error) {
+        console.error('Text recognition failed:', error);
+      }
+    } else {
+      console.warn('No scanned image returned');
+    }
+  }, []);
+
+  // useEffect(() => {
+  //   // call scanDocument on load
+  //   scanDocument();
+  // }, [scanDocument]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>MLKit Demo App</Text>
         <Text style={styles.subtitle}>Welcome to the future of mobile AI ✨</Text>
-        <Button title="test" onPress={pickAndRecognizeUAEIdCard} />
+        <Button title="Scan (memory)" onPress={pickAndRecognizeUAEIdCard} />
+        <Button title="Scan Document" onPress={scanDocument} />
       </View>
     </SafeAreaView>
   );
