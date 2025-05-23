@@ -4,6 +4,9 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import {SafeAreaView, Text, StyleSheet, View, Button} from 'react-native';
 import TextRecognition, { TextRecognitionResult } from '@react-native-ml-kit/text-recognition';
 
+import { OpenCV } from 'react-native-fast-opencv';
+import RNFS from 'react-native-fs';
+
 interface EmiratesIdCardFrontInfo {
   name: string,
   idNumber: string,
@@ -158,6 +161,82 @@ const App = () => {
     return backInfo;
   };
 
+  async function straightenDocument(imagePath: string): Promise<string> {
+    // Load image
+    const mat = await OpenCV.imread(imagePath);
+
+    // Convert to grayscale
+    const gray = await OpenCV.cvtColor(mat, OpenCV.ColorConversionCodes.COLOR_RGBA2GRAY);
+
+    // Blur to reduce noise
+    const blurred = await OpenCV.GaussianBlur(gray, [5, 5], 0);
+
+    // Edge detection
+    const edges = await OpenCV.Canny(blurred, 75, 200);
+
+    // Find contours
+    const contours = await OpenCV.findContours(edges, OpenCV.RetrievalModes.RETR_LIST, OpenCV.ContourApproximationModes.CHAIN_APPROX_SIMPLE);
+
+    // Find biggest rectangle-like contour (4 points)
+    let docContour = null;
+    for (const contour of contours) {
+      const peri = await OpenCV.arcLength(contour, true);
+      const approx = await OpenCV.approxPolyDP(contour, 0.02 * peri, true);
+      if (approx.length === 4) {
+        docContour = approx;
+        break;
+      }
+    }
+
+    if (!docContour) throw new Error('No document detected');
+
+    // Order the 4 points correctly
+    const rect = orderPoints(docContour); // implement this helper
+
+    // Compute transform matrix and warp
+    const [tl, tr, br, bl] = rect;
+    const widthTop = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+    const widthBottom = Math.hypot(br.x - bl.x, br.y - bl.y);
+    const maxWidth = Math.max(widthTop, widthBottom);
+
+    const heightLeft = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+    const heightRight = Math.hypot(br.x - tr.x, br.y - tr.y);
+    const maxHeight = Math.max(heightLeft, heightRight);
+
+    const dstPoints = [
+      { x: 0, y: 0 },
+      { x: maxWidth - 1, y: 0 },
+      { x: maxWidth - 1, y: maxHeight - 1 },
+      { x: 0, y: maxHeight - 1 },
+    ];
+
+    const M = await OpenCV.getPerspectiveTransform(rect, dstPoints);
+    const warped = await OpenCV.warpPerspective(mat, M, [maxWidth, maxHeight]);
+
+    console.log(warped)
+
+    // Save to file
+    const savedPath = `${RNFS.CachesDirectoryPath}/corrected.jpg`;
+    await OpenCV.imwrite(savedPath, warped);
+
+    return savedPath;
+  }
+
+  const pickAndStraighten = async () => {
+    console.log('saass')
+    const backResult = await launchImageLibrary({ mediaType: 'photo' });
+    console.log('saass')
+
+    if (backResult.assets && backResult.assets.length > 0) {
+      const asset = backResult.assets[0];
+
+      const filePath = await straightenDocument(asset.uri);
+    } else {
+      console.log('No image selected.');
+    }
+  }
+
+
   const pickAndRecognizeUAEIdCard = async () => {
 
     // // Get front of the id card
@@ -198,7 +277,8 @@ const App = () => {
       <View style={styles.card}>
         <Text style={styles.title}>MLKit Demo App</Text>
         <Text style={styles.subtitle}>Welcome to the future of mobile AI ✨</Text>
-        <Button title="test" onPress={pickAndRecognizeUAEIdCard} />
+        <Button title="straighten" onPress={pickAndStraighten} />
+        <Button title="scan" onPress={pickAndRecognizeUAEIdCard} />
       </View>
     </SafeAreaView>
   );

@@ -11,9 +11,14 @@
   },
   "dependencies": {
     "@react-native-ml-kit/text-recognition": "^1.5.2",
+    "@shopify/react-native-skia": "^2.0.1",
     "react": "19.0.0",
     "react-native": "0.79.0",
-    "react-native-image-picker": "5.7.0"
+    "react-native-image-picker": "5.7.0",
+    "react-native-fast-opencv": "^0.4.5",
+    "react-native-fs": "^2.20.0",
+    "react-native-vision-camera": "^4.6.4",
+    "react-native-worklets-core": "^1.5.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
