@@ -13,6 +13,8 @@
     "@react-native-ml-kit/text-recognition": "^1.5.2",
     "react": "19.0.0",
     "react-native": "0.79.0",
+    "react-native-fast-opencv": "^0.4.5",
+    "react-native-fs": "^2.20.0",
     "react-native-image-picker": "5.7.0"
   },
   "devDependencies": {

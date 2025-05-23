@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { launchImageLibrary } from 'react-native-image-picker';
 
 import {SafeAreaView, Text, StyleSheet, View, Button} from 'react-native';
 import TextRecognition, { TextRecognitionResult } from '@react-native-ml-kit/text-recognition';
+
+import RNFS from 'react-native-fs';
+import ImageProcessor from './src/components/ImageProcessor';
 
 interface EmiratesIdCardFrontInfo {
   name: string,
@@ -158,6 +161,22 @@ const App = () => {
     return backInfo;
   };
 
+  const [imgToStraightenPath, setimgToStraightenPath] = useState('');
+
+  const pickAndStraighten = async () => {
+    const backResult = await launchImageLibrary({ mediaType: 'photo' });
+
+    if (backResult.assets && backResult.assets.length > 0) {
+      const asset = backResult.assets[0];
+
+      setimgToStraightenPath(asset.uri)
+
+    } else {
+      console.log('No image selected.');
+    }
+  }
+
+
   const pickAndRecognizeUAEIdCard = async () => {
 
     // // Get front of the id card
@@ -198,8 +217,9 @@ const App = () => {
       <View style={styles.card}>
         <Text style={styles.title}>MLKit Demo App</Text>
         <Text style={styles.subtitle}>Welcome to the future of mobile AI ✨</Text>
-        {/* <Button title="straighten" onPress={pickAndStraighten} /> */}
-        <Button title="scan" onPress={pickAndRecognizeUAEIdCard} />
+        <Button title="straighten" onPress={pickAndStraighten} />
+        {/* <Button title="scan" onPress={pickAndRecognizeUAEIdCard} /> */}
+        <ImageProcessor imagePath={imgToStraightenPath} />
       </View>
     </SafeAreaView>
   );
